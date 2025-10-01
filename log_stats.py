@@ -4,11 +4,12 @@
 
 from pymongo import MongoClient
 from typing import List, Dict, Any
+from datetime import datetime
 import os
 
 
 class LogStats:
-
+    """Класс для работы со статистикой поисковых запросов из MongoDB"""
     def __init__(self):
         self.client = None
         self.db = None
@@ -16,8 +17,8 @@ class LogStats:
         self.connect()
 
     def connect(self):
+        """Подключение к MongoDB через параметры из .env"""
         try:
-            # Чтение из .env
             mongodb_uri = os.getenv('MONGO_URI')
             database_name = os.getenv('MONGO_DATABASE')
             collection_name = os.getenv('MONGO_COLLECTION')
@@ -26,75 +27,25 @@ class LogStats:
             self.db = self.client[database_name]
             self.collection = self.db[collection_name]
 
-            self.client.server_info()
-            #print("Подключение к MongoDB для статистики успешно!")
-
+            self.client.server_info()  # проверка подключения
         except Exception as e:
-            print(f" Ошибка MongoDB (Stats): {e}") # Оставляем для отладки
+            print(f" Ошибка MongoDB (Stats): {e}")  # Оставляем для отладки
             raise
 
-    def get_popular_searches(self, limit: int = 5) -> List[Dict[str, Any]]:
-        """Получает N самых популярных запросов с помощью агрегации MongoDB."""
-        try:
-            # Агрегация для подсчета частоты запросов
-            pipeline = [
-                # Шаг 1: Группировка по search_text для подсчета частоты (count)
-                {
-                    "$group": {
-                        "_id": "$search_text",
-                        "count": {"$sum": 1},
-                        "search_type": {"$first": "$search_type"},
-                        "last_search": {"$max": "$timestamp"},
-                        "total_results": {"$sum": "$results_count"}
-                    }
-                },
-                # Шаг 2: Фильтрация, исключающая пустые строки и запросы с 0 счетчиком
-                {
-                    "$match": {
-                        "_id": {"$ne": ""},
-                        "count": {"$gt": 0}
-                    }
-                },
-                # Шаг 3: Сортировка по убыванию частоты
-                {"$sort": {"count": -1}},
-                # Шаг 4: Ограничение результата N элементами
-                {"$limit": limit}
-            ]
-
-            results = list(self.collection.aggregate(pipeline))
-
-            # Форматируем результат
-            popular_searches = []
-            for result in results:
-                popular_searches.append({
-                    "search_text": result["_id"],
-                    "count": result["count"],
-                    "search_type": result["search_type"],
-                    "last_search": result["last_search"],
-                    "total_results": result["total_results"]
-                })
-
-            return popular_searches
-
-        except Exception as e:
-            print(f" Ошибка получения популярных запросов: {e}")
-            return []
-
     def get_recent_searches(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Возвращает последние уникальные поисковые запросы.
+        - Исключает пустые поиски
+        - Убирает дубликаты
+        - Сортирует по времени (от новых к старым)
+        - Ограничивает количество
+        """
         try:
-            # Получаем последние уникальные запросы
             pipeline = [
-                # Исключаем пустые поиски
+                {"$match": {"search_text": {"$ne": ""}}},  # убираем пустые поиски
+                {"$sort": {"timestamp": -1}},  # сортируем по времени
                 {
-                    "$match": {
-                        "search_text": {"$ne": ""}
-                    }
-                },
-                # Сортируем по времени (убывание)
-                {"$sort": {"timestamp": -1}},
-                # Группируем по поисковому тексту (убираем дубликаты)
-                {
-                    "$group": {
+                    "$group": {  # убираем дубликаты
                         "_id": "$search_text",
                         "timestamp": {"$first": "$timestamp"},
                         "search_type": {"$first": "$search_type"},
@@ -102,24 +53,23 @@ class LogStats:
                         "results_count": {"$first": "$results_count"}
                     }
                 },
-                # Еще раз сортируем по времени
-                {"$sort": {"timestamp": -1}},
-                # Ограничиваем количество
-                {"$limit": limit}
+                {"$sort": {"timestamp": -1}},  # снова сортируем
+                {"$limit": limit}  # ограничиваем количество
             ]
 
             results = list(self.collection.aggregate(pipeline))
 
             # Форматируем результат
-            recent_searches = []
-            for result in results:
-                recent_searches.append({
+            recent_searches = [
+                {
                     "search_text": result["_id"],
                     "timestamp": result["timestamp"],
                     "search_type": result["search_type"],
                     "params": result["params"],
                     "results_count": result["results_count"]
-                })
+                }
+                for result in results
+            ]
 
             return recent_searches
 
@@ -127,73 +77,74 @@ class LogStats:
             print(f" Ошибка получения последних запросов: {e}")
             return []
 
-    def get_empty_search_count(self) -> int:
+    def get_popular_searches(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Возвращает самые популярные поисковые запросы (по количеству повторов),
+        учитывает ключевые слова и поиск по жанру/годам
+        """
         try:
-            count = self.collection.count_documents({"results_count": 0})
-            return count
+            pipeline = [
+                {"$group": {
+                    "_id": "$search_text",
+                    "count": {"$sum": 1},
+                    "search_type": {"$first": "$search_type"},
+                    "total_results": {"$sum": "$results_count"},
+                    "last_search": {"$max": "$timestamp"}
+                }},
+                {"$sort": {"count": -1, "last_search": -1}},
+                {"$limit": limit}
+            ]
+
+            result = list(self.collection.aggregate(pipeline))
+
+            # Преобразуем _id в search_text для удобства вывода
+            for item in result:
+                item["search_text"] = item.pop("_id")
+
+            return result
 
         except Exception as e:
-            print(f" Ошибка подсчета пустых поисков: {e}")
-            return 0
+            print(f"Ошибка получения популярных поисков: {e}")
+            return []
 
-    def get_total_searches(self) -> int:
+    def get_total_searches_count(self) -> int:
+        """Общее количество поисковых запросов."""
         try:
             return self.collection.count_documents({})
         except Exception as e:
-            print(f" Ошибка подсчета общего количества: {e}")
+            print(f"Ошибка подсчета всех логов: {e}")
             return 0
 
-    def test_connection(self) -> bool:
+    def get_keyword_searches_count(self) -> int:
+        """Количество поисков по ключевым словам."""
         try:
-            # Пробуем выполнить простую операцию
-            self.collection.find_one()
-            return True
-        except Exception:
-            return False
+            return self.collection.count_documents({"search_type": "keyword"})
+        except Exception as e:
+            print(f"Ошибка подсчета поисков по ключевым словам: {e}")
+            return 0
+
+    def get_genre_searches_count(self) -> int:
+        """
+        Количество поисков по жанру и годам.
+        """
+        try:
+            return self.collection.count_documents({"search_type": "genre_year"})
+        except Exception as e:
+            print(f"Ошибка подсчета поисков по жанру и годам: {e}")
+            return 0
+
+    def get_empty_results_count(self) -> int:
+        """Количество поисков, которые не дали результатов"""
+        try:
+            return self.collection.count_documents({"results_count": 0})
+        except Exception as e:
+            print(f"Ошибка подсчета пустых результатов: {e}")
+            return 0
 
     def close(self):
+        """Закрытие подключения к MongoDB"""
         try:
             if self.client:
                 self.client.close()
-                print(" Подключение к MongoDB (статистика) закрыто")
         except Exception as e:
-            print(f" Ошибка закрытия подключения: {e}")
-
-
-def test_log_stats():
-    try:
-        stats = LogStats()
-        print(" Тестирование подключения...")
-        if stats.test_connection():
-            print(" Подключение работает!")
-        else:
-            print(" Проблемы с подключением!")
-            return
-
-        print(f"\n Общее количество поисков: {stats.get_total_searches()}")
-        print(f" Поисков без результатов: {stats.get_empty_search_count()}")
-
-        print("\n Популярные запросы:")
-        popular = stats.get_popular_searches(3)
-        for i, search in enumerate(popular, 1):
-            print(f"  {i}. '{search['search_text']}' - {search['count']} раз")
-
-        print("\n Последние запросы:")
-        recent = stats.get_recent_searches(3)
-        for search in recent:
-            print(f"  - '{search['search_text']}' ({search['search_type']})")
-
-        print("\n Статистика по типам:")
-        type_stats = stats.get_search_stats_by_type()
-        for search_type, count in type_stats.items():
-            print(f"  {search_type}: {count}")
-
-        stats.close()
-        print("\n Тест статистики завершен!")
-
-    except Exception as e:
-        print(f" Ошибка тестирования статистики: {e}")
-
-
-if __name__ == "__main__":
-    test_log_stats()
+            print(f"Ошибка закрытия подключения: {e}")

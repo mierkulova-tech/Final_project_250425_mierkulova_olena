@@ -89,7 +89,7 @@ MOVIE SEARCH APP -MierX-
 
 ```
 movie_search_project/
-├── main.py   # Главный файл приложения
+├── main.py                # Главный файл приложения
 ├── mysql_connector.py     # Работа с MySQL (поиск фильмов)
 ├── log_writer.py          # Запись логов в MongoDB
 ├── log_stats.py           # Статистика логов из MongoDB  
@@ -109,13 +109,10 @@ MovieDatabase (mysql_connector.py)
 
 LogWriter (log_writer.py) 
 - `log_search()` - записать поисковый запрос
-- `get_logs_count()` - количество логов
-- `clear_logs()` - очистить логи
 
 LogStats (log_stats.py)
 - `get_popular_searches()` - популярные запросы
 - `get_recent_searches()` - последние запросы
-- `get_search_stats_by_type()` - статистика по типам
 
 ResultFormatter (formatter.py)
 - `print_movies()` - красивый вывод фильмов
@@ -133,7 +130,7 @@ ResultFormatter (formatter.py)
 Автор
 
 **Студентка**: Mierkulova Olena
-**Группа**: 250425
+**Группа**: 250425-ptm
 **Проект**: Final Project - Movie Search App -MierX-
 
 ---
