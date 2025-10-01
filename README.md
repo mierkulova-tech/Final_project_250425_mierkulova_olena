@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-orange?logo=mysql&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Logs-green?logo=mongodb&logoColor=white)
-![Status](https://img.shields.io/badge/Project-Final_Project_250425-success)
+![Status](https://img.shields.io/badge/Project-Final_Project_250425_ptm-success)
 
 ---
 
@@ -151,5 +151,5 @@ movie_search_project/
 ## 👩‍💻 Автор
 
 - **Студентка**: Mierkulova Olena  
-- **Группа**: 250425-ptm  
+- **Группа**: 250425 ptm  
 - **Проект**: Final Project — *Movie Search App - MierX-*  
