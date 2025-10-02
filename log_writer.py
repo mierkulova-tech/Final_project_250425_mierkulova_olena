@@ -28,11 +28,12 @@ class LogWriter:
         # Проверка соединения
         self.client.server_info()
 
-    def log_search(self, search_type: str, params: Dict[str, Any], results_count: int):
+    def log_search(self, search_type: str, params: Dict[str, Any], results_count: int, search_text=None):
         """Запись одного поиска в коллекцию."""
         log_entry = {
             "timestamp": datetime.now(),
             "search_type": search_type,
+            "search_text": search_text,
             "params": params,
             "results_count": results_count
         }
@@ -40,11 +41,13 @@ class LogWriter:
 
     def log_keyword_search(self, keyword: str, results_count: int):
         params = {"keyword": keyword}
-        self.log_search("keyword", params, results_count)
+        search_text = keyword  # для статистики
+        self.log_search("keyword", params, results_count,  search_text)
 
     def log_genre_year_search(self, genre: str, year_from: int, year_to: int, results_count: int):
         params = {"genre": genre,"year_from": year_from,"year_to": year_to}
-        self.log_search("genre_year", params, results_count)
+        search_text = f"{genre} ({year_from}-{year_to})"  # для статистики
+        self.log_search("genre_year", params, results_count, search_text)
 
 
 
@@ -104,6 +107,3 @@ class LogWriter:
                 self.client.close()
         except Exception as e:
             print(f" Ошибка закрытия подключения: {e}")
-
-
-

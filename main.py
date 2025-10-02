@@ -73,7 +73,7 @@ class MovieSearchApp:
                     print(f"По запросу '{keyword}' ничего не найдено")
                     # Логируем даже пустые результаты для статистики (популярные, но неуспешные запросы)
                     # Например, что пользователи ищут и чего не хватает в базе - будет запись в логгах.
-                    self.logger.log_search("keyword", {"keyword": keyword}, 0)
+                    self.logger.log_keyword_search(keyword, 0)
                 else:
                     print("Больше результатов нет")
                 break
@@ -84,7 +84,7 @@ class MovieSearchApp:
 
             # Логируем поиск только при первых результатах
             if offset == 0:
-                self.logger.log_search("keyword", {"keyword": keyword}, len(movies))
+                self.logger.log_keyword_search(keyword, len(movies))
 
             # Спрашиваем про продолжение, пагинация
             if len(movies) == 10:  # Если получили полную страницу
@@ -143,7 +143,7 @@ class MovieSearchApp:
             if not movies:
                 if offset == 0:
                     print("По запросу не найдено фильмов")
-                    self.logger.log_search("genre_year", search_params, 0)
+                    self.logger.log_genre_year_search(genre, year_from, year_to, 0)
                 else:
                     print("Больше результатов нет")
                 break
@@ -154,7 +154,7 @@ class MovieSearchApp:
 
             # Логируем только первые результаты
             if offset == 0:
-                self.logger.log_search("genre_year", search_params, len(movies))
+                self.logger.log_genre_year_search(genre, year_from, year_to, len(movies))
 
             # Проверяем продолжение
             if len(movies) == 10:
